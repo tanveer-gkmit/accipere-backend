@@ -1,0 +1,27 @@
+# Core Django
+Django>=4.2,<5.0
+djangorestframework>=3.14,<4.0
+
+# Authentication
+djangorestframework-simplejwt>=5.3.0
+
+# CORS handling
+django-cors-headers>=4.3.0
+
+# Filtering and search
+django-filter>=23.3
+
+# Configuration management
+python-decouple>=3.8
+
+# File type validation
+python-magic>=0.4.27
+
+# PostgreSQL adapter
+psycopg2-binary>=2.9.9
+
+# Production server
+gunicorn>=21.2.0
+
+# Rate limiting
+django-ratelimit>=4.1.0
