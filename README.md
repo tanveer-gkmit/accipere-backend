@@ -66,6 +66,17 @@ python manage.py runserver
 
 The API will be available at `http://localhost:8000`
 
+## Docker Setup
+
+### Build and Run with Docker
+
+```bash
+docker build -t accipere .
+docker run --env-file .env -p 8000:8000 accipere
+```
+
+The API will be available at `http://localhost:8000`
+
 ## Project Structure
 
 ```
