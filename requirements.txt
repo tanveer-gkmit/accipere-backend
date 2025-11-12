@@ -25,3 +25,5 @@ gunicorn>=21.2.0
 
 # Rate limiting
 django-ratelimit>=4.1.0
+
+coverage==7.11.1
