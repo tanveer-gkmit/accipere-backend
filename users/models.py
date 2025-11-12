@@ -27,6 +27,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, first_name, last_name, password=None, **extra_fields):
         """
         Create and save a superuser with the given email, first_name, last_name, and password.
+        Superusers are automatically assigned the Administrator role.
         """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
@@ -36,6 +37,13 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_staff=True.')
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
+        
+        # Superusers must have Administrator role
+        if 'role' not in extra_fields:
+            admin_role = Role.objects.get(name='Administrator')
+            extra_fields['role'] = admin_role
+        elif extra_fields['role'].name != 'Administrator':
+            raise ValueError('Superuser must have Administrator role.')
 
         return self.create_user(email, first_name, last_name, password, **extra_fields)
 
@@ -52,8 +60,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         Role,
         on_delete=models.RESTRICT,
         related_name='users',
-        null=True,
-        blank=True
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
