@@ -5,6 +5,14 @@ from django.contrib.auth import authenticate, get_user_model
 
 User = get_user_model()
 
+class UserProfileSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source='role.name', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'role']
+        read_only_fields = ['id', 'email', 'first_name', 'last_name', 'role']
+
 class EmailTokenObtainPairSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
