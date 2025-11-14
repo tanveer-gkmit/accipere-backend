@@ -11,7 +11,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'role']
-        read_only_fields = ['id', 'email', 'first_name', 'last_name', 'role']
+        read_only_fields = ['id']
 
 class EmailTokenObtainPairSerializer(serializers.Serializer):
     email = serializers.EmailField()
