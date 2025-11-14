@@ -1,10 +1,12 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-# Create your models here.
 from django.utils import timezone
+from common.models import SoftDeleteModel
+
 User = get_user_model()
 
-class Jobs(models.Model):
+
+class Jobs(SoftDeleteModel):
 
     # Employment type choices
     EMPLOYMENT_TYPES = [
