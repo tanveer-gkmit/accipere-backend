@@ -148,3 +148,43 @@ class LogoutTestCase(APITestCase):
         response = self.client.post(self.logout_url, data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class CurrentUserTestCase(APITestCase):
+    """Test cases for current user profile endpoint"""
+    
+    def setUp(self):
+        """Set up test data"""
+        self.client = APIClient()
+        self.me_url = reverse('current_user')
+        self.role = Role.objects.get(name='Recruiter')
+        
+        self.user = User.objects.create_user(
+            email='user@test.com',
+            first_name='John',
+            last_name='Doe',
+            password='TestPass123!',
+            role=self.role,
+            is_active=True
+        )
+        
+        self.refresh_token = RefreshToken.for_user(self.user)
+        self.access_token = str(self.refresh_token.access_token)
+    
+    def test_get_current_user_with_authentication(self):
+        """Test getting current user profile with valid authentication"""
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access_token}')
+        response = self.client.get(self.me_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], 'user@test.com')
+        self.assertEqual(response.data['first_name'], 'John')
+        self.assertEqual(response.data['last_name'], 'Doe')
+        self.assertEqual(response.data['role'], 'Recruiter')
+        self.assertIn('id', response.data)
+    
+    def test_get_current_user_without_authentication(self):
+        """Test getting current user profile fails without authentication"""
+        response = self.client.get(self.me_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
