@@ -112,6 +112,17 @@ class ApplicationStatusesViewSetTestCase(APITestCase):
         response = self.client.post(self.reorder_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_reorder_statuses_wrong_input_as_admin(self):
+        """Cannot reorder statuses with wrong input."""
+        self.client.force_authenticate(user=self.admin_user)
+        items = [
+            {'id': self.statuses[3].id, 'order_sequence': 1},
+        ]
+        data = {'items': items}
+        
+        response = self.client.post(self.reorder_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_reorder_statuses_as_non_admin(self):
         """Test non-admin cannot reorder statuses."""
         self.client.force_authenticate(user=self.recruiter_user)

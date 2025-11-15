@@ -8,18 +8,26 @@ from django.core.validators import RegexValidator
 from django.core.validators import MinValueValidator, MaxValueValidator
 User = get_user_model()
 from jobs.models import Jobs
+from django.db.models import UniqueConstraint, Deferrable
 
 
 class ApplicationStatuses(models.Model):
     name = models.CharField(max_length=255,unique=True)
     description = models.TextField()
-    order_sequence = models.PositiveIntegerField(default=0, editable=False, db_index=True)
+    order_sequence = models.IntegerField(editable=False, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['order_sequence']
+        constraints = [
+            UniqueConstraint(
+                fields=['order_sequence'],
+                name='unique_order_sequence',
+                deferrable=Deferrable.DEFERRED,  # Checked at transaction end
+            )
+        ]
 
     def __str__(self):
         return self.name

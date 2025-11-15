@@ -41,15 +41,39 @@ class ApplicationStatusesViewSet(viewsets.ModelViewSet):
                 {'error': 'No items provided'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Get IDs being updated
+        updating_ids = [item['id'] for item in items]
+        new_order_sequences = [item['order_sequence'] for item in items]
+        
+        # Check if any of the new order_sequence values already exist in statuses NOT being updated
+        existing_conflicts = ApplicationStatuses.objects.filter(
+            order_sequence__in=new_order_sequences
+        ).exclude(id__in=updating_ids)
+        
+        if existing_conflicts.exists():
+            return Response(
+                {'error': 'Order sequence conflict with existing statuses'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
             with transaction.atomic():
+                # First pass: Set to negative values
+                for idx, item in enumerate(items):
+                    ApplicationStatuses.objects.filter(
+                        id=item['id']
+                    ).update(order_sequence=-(idx + 1))
+                
+                # Second pass: Set to final values
                 for item in items:
                     ApplicationStatuses.objects.filter(
                         id=item['id']
                     ).update(order_sequence=item['order_sequence'])
+            
+            return Response({'message': 'Order updated successfully'})
         except Exception as e:
             return Response(
-                {'error': f"Internal Server Error"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'error': 'Failed to update order'},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        return Response({'message': 'Order updated successfully'})
