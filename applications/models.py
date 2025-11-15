@@ -25,10 +25,12 @@ class ApplicationStatuses(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        max_order = ApplicationStatuses.objects.aggregate(
-            models.Max('order_sequence')
-        )['order_sequence__max']
-        self.order_sequence = (max_order or 0) + 1
+        # Only auto-assign order_sequence for new instances
+        if self.pk is None:
+            max_order = ApplicationStatuses.objects.aggregate(
+                models.Max('order_sequence')
+            )['order_sequence__max']
+            self.order_sequence = (max_order or 0) + 1
         super().save(*args, **kwargs)
 
 
