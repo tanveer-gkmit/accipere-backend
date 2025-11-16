@@ -3,16 +3,16 @@ from .models import ApplicationStatuses, Applications, ApplicationAssignedUserSt
 import magic
 
 
-def validate_pdf_file(value):
+def validate_pdf_file(file):
     """Validate that uploaded file is a PDF using python-magic and within size limit"""
     # Check file size (max 5MB)
-    if value.size > 5 * 1024 * 1024:
+    if file.size > 5 * 1024 * 1024:
         raise serializers.ValidationError("Resume file size cannot exceed 5MB.")
     
     # Read the first 2048 bytes to detect file type
-    value.seek(0)
-    file_header = value.read(2048)
-    value.seek(0)  # Reset file pointer
+    file.seek(0)
+    file_header = file.read(2048)
+    file.seek(0)  # Reset file pointer
     
     # Detect MIME type using python-magic
     mime = magic.from_buffer(file_header, mime=True)
@@ -22,7 +22,7 @@ def validate_pdf_file(value):
             f"Only PDF files are allowed. Detected file type: {mime}"
         )
     
-    return value
+    return file
 
 
 class ApplicationStatusSerializer(serializers.ModelSerializer):
