@@ -54,7 +54,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for updating existing users.
-    Role can only be changed by administrators.
+    Email and role can only be changed by administrators.
     """
     role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), required=False)
     
@@ -63,8 +63,20 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = ['email', 'first_name', 'last_name', 'role', 'is_active']
     
     def validate_email(self, value):
-        """Ensure email is unique (excluding current user)."""
+        """
+        Ensure email is unique (excluding current user).
+        Only administrators can change email.
+        """
+        request = self.context.get('request')
         user = self.instance
+        
+        # If email is being changed
+        if user and user.email != value:
+            # Check if user is admin
+            if not (request and request.user.role and request.user.role.name == 'Administrator'):
+                raise serializers.ValidationError("Only administrators can change user email.")
+        
+        # Check uniqueness
         if User.objects.filter(email=value).exclude(id=user.id).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
