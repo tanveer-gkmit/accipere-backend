@@ -4,6 +4,7 @@ from . import views
 
 router = DefaultRouter()
 router.register('application-statuses', views.ApplicationStatusesViewSet, basename='applicationstatuses')
+router.register('applications', views.ApplicationViewSet, basename='application')
 
 urlpatterns = [
     path('', include(router.urls)),
