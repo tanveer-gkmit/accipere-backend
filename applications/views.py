@@ -35,9 +35,9 @@ class ApplicationStatusesViewSet(viewsets.ModelViewSet):
         Expects JSON payload:
         {
             "items": [
-                {"id": 1, "order_sequence": 0},
-                {"id": 3, "order_sequence": 1},
-                {"id": 2, "order_sequence": 2}
+                {"id": "uuid-string-1", "order_sequence": 0},
+                {"id": "uuid-string-2", "order_sequence": 1},
+                {"id": "uuid-string-3", "order_sequence": 2}
             ]
         }
         """

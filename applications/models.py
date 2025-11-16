@@ -1,5 +1,5 @@
 from django.db import models
-
+import uuid
 
 from common.models import SoftDeleteModel
 from django.contrib.auth import get_user_model
@@ -12,6 +12,7 @@ from django.db.models import UniqueConstraint, Deferrable
 
 
 class ApplicationStatuses(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255,unique=True)
     description = models.TextField()
     order_sequence = models.IntegerField(editable=False, db_index=True)
@@ -34,7 +35,7 @@ class ApplicationStatuses(models.Model):
 
     def save(self, *args, **kwargs):
         # Only auto-assign order_sequence for new instances
-        if self.pk is None:
+        if self._state.adding:
             max_order = ApplicationStatuses.objects.aggregate(
                 models.Max('order_sequence')
             )['order_sequence__max']
@@ -44,6 +45,7 @@ class ApplicationStatuses(models.Model):
 
 
 class Applications(SoftDeleteModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     INDIAN_PHONE_REGEX = RegexValidator(
     regex=r'^(?:\+91)?[6-9]\d{9}$',
@@ -102,6 +104,7 @@ class Applications(SoftDeleteModel):
 
 
 class ApplicationAssignedUserStatuses(SoftDeleteModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     application_id = models.ForeignKey(Applications,on_delete=models.CASCADE,related_name='status_history')
     status_id = models.ForeignKey(ApplicationStatuses,on_delete=models.RESTRICT,related_name='assignments')

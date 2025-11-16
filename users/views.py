@@ -220,7 +220,7 @@ class UserViewSet(viewsets.ModelViewSet):
         expiration = timezone.now() + timedelta(days=2)
         
         payload = {
-            'user_id': user.id,
+            'user_id': str(user.id),  # Convert UUID to string for JWT
             'email': user.email,
             'exp': int(expiration.timestamp()),
             'iat': int(timezone.now().timestamp()),
