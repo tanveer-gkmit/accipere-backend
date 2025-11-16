@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+import uuid
 
 from roles.models import Role
 
@@ -53,6 +54,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     Custom User model with email as the unique identifier.
     Extends AbstractBaseUser for authentication functionality.
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, db_index=True)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)

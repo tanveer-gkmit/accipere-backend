@@ -2,11 +2,13 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from common.models import SoftDeleteModel
+import uuid
 
 User = get_user_model()
 
 
 class Jobs(SoftDeleteModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Employment type choices
     EMPLOYMENT_TYPES = [
