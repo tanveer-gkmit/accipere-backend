@@ -198,3 +198,10 @@ CORS_ALLOW_CREDENTIALS = True
 
 # File Upload Configuration
 MAX_UPLOAD_SIZE = config('MAX_UPLOAD_SIZE', default=5242880, cast=int)  # 5MB default
+
+# Email Configuration
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+
+# Frontend URL (for password setup links)
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
