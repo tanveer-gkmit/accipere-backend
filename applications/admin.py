@@ -31,6 +31,10 @@ class ApplicationsAdmin(admin.ModelAdmin):
 
     list_filter = ("city", "created_at")
 
+    def get_queryset(self, request):
+        # Show all objects including soft-deleted in admin
+        return self.model.all_objects.get_queryset()
+
 
 @admin.register(ApplicationStatuses)
 class ApplicationStatusesAdmin(admin.ModelAdmin):
@@ -57,3 +61,7 @@ class ApplicationAssignedUserStatusesAdmin(admin.ModelAdmin):
     )
 
     list_filter = ("status_id", "created_at")
+
+    def get_queryset(self, request):
+        # Show all objects including soft-deleted in admin
+        return self.model.all_objects.get_queryset()
