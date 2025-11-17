@@ -25,6 +25,10 @@ class JobViewset(viewsets.ModelViewSet):
             return [IsAdmin()]
         return [IsAuthenticated()]
     
+    def perform_create(self, serializer):
+        """Automatically set posted_by_user_id to current user."""
+        serializer.save(posted_by_user_id=self.request.user)
+    
     def perform_destroy(self, instance):
         """Soft delete by default."""
         instance.delete()  # This will soft delete
