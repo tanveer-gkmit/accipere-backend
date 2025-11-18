@@ -13,7 +13,7 @@ from .serializers import (
     ApplicationCreateSerializer,
     ApplicationUpdateSerializer
 )
-
+from rest_framework.exceptions import ValidationError
 
 class ApplicationStatusesViewSet(viewsets.ModelViewSet):
     queryset = ApplicationStatuses.objects.all()
@@ -28,6 +28,29 @@ class ApplicationStatusesViewSet(viewsets.ModelViewSet):
         elif self.action in ['create', 'update', 'partial_update','destroy','reorder']:
             return [IsAdmin()]
         return [IsAuthenticated()]
+    
+    def perform_destroy(self, instance):
+        """
+        Prevent deletion of statuses that are currently in use by applications.
+        """
+        # Check if any applications are using this status
+        applications_count = instance.current_applications.count()
+        
+        if applications_count > 0:
+            raise ValidationError({
+                'error': f'Cannot delete this status. It is currently assigned to {applications_count} application(s). '
+                         f'Please reassign those applications to a different status before deleting.'
+            })
+        
+        # Also check if it's used in status history
+        history_count = instance.assignments.count()
+        if history_count > 0:
+            raise ValidationError({
+                'error': f'Cannot delete this status. It is referenced in {history_count} status history record(s). '
+                         f'Status history must be preserved for audit purposes.'
+            })
+        
+        instance.delete()
     
     @action(detail=False, methods=['post'], url_path='reorder')
     def reorder(self, request):
