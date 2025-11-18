@@ -10,15 +10,20 @@ class UserSerializer(serializers.ModelSerializer):
     """
     role_name = serializers.CharField(source='role.name', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
+    is_password_set = serializers.SerializerMethodField()
     
     class Meta:
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'role', 'role_name', 'is_active', 'is_staff',
+            'role', 'role_name', 'is_active', 'is_staff', 'is_password_set',
             'created_at', 'updated_at', 'last_login', 'deleted_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'last_login', 'deleted_at']
+    
+    def get_is_password_set(self, obj):
+        """Check if user has a usable password set."""
+        return obj.has_usable_password()
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -54,7 +59,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for updating existing users.
-    Email and role can only be changed by administrators.
+    Email, role, and is_active can only be changed by administrators.
     """
     role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), required=False)
     
@@ -93,6 +98,17 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 # Check if user is admin
                 if not (request.user.role and request.user.role.name == 'Administrator'):
                     raise serializers.ValidationError("Only administrators can change user roles.")
+        return value
+    
+    def validate_is_active(self, value):
+        """Only administrators can change is_active status."""
+        request = self.context.get('request')
+        if request and self.instance:
+            # If is_active is being changed
+            if self.instance.is_active != value:
+                # Check if user is admin
+                if not (request.user.role and request.user.role.name == 'Administrator'):
+                    raise serializers.ValidationError("Only administrators can change user active status.")
         return value
 
 
