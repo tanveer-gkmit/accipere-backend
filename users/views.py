@@ -13,7 +13,8 @@ from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
-    SetPasswordSerializer
+    SetPasswordSerializer,
+    SimpleUserSerializer
 )
 from common.permissions import IsAdmin, IsAdminOrSelf
 from common.email_utils import send_set_password_email, send_reset_password_email
@@ -22,6 +23,20 @@ from common.email_utils import send_set_password_email, send_reset_password_emai
 TOKEN_EXPIRY_DAYS = 2
 PASSWORD_SETUP = 'password_setup'
 PASSWORD_RESET = 'password_reset'
+
+
+class SimpleUserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for listing users with minimal information.
+    Accessible by all authenticated users.
+    
+    Endpoints:
+    - GET /api/users/simple/     - List all active users (id, email, name)
+    - GET /api/users/simple/{id}/ - Retrieve single user (id, email, name)
+    """
+    queryset = User.objects.filter(deleted_at__isnull=True, is_active=True)
+    serializer_class = SimpleUserSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class UserViewSet(viewsets.ModelViewSet):

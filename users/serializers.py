@@ -2,6 +2,21 @@ from rest_framework import serializers
 from django.utils import timezone
 from .models import User
 from roles.models import Role
+from common.permissions import IsRecruiter
+
+
+class SimpleUserSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for User model.
+    Returns only id, email, and name.
+    Can be accessed by recruiters.
+    """
+    name = serializers.CharField(source='get_full_name', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'name']
+        read_only_fields = ['id', 'email', 'name']
 
 
 class UserSerializer(serializers.ModelSerializer):
