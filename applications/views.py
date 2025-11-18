@@ -155,15 +155,16 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def perform_update(self, serializer):
         """
-        Override to track status changes and update notes in ApplicationAssignedUserStatuses.
+        Override to track status changes and update notes/assigned_user in ApplicationAssignedUserStatuses.
         Validates that status can only move forward (increasing order_sequence).
         """
         instance = self.get_object()
         old_status = instance.current_status
         
-        # Get status_notes and new_status from validated data before save
+        # Get status_notes, new_status, and assigned_user_id from validated data before save
         status_notes = serializer.validated_data.get('status_notes', '')
         new_status = serializer.validated_data.get('current_status')
+        assigned_user = serializer.validated_data.get('assigned_user_id')
         
         # If status is being changed, validate order_sequence progression
         if new_status and new_status != old_status:
@@ -182,18 +183,21 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             ApplicationAssignedUserStatuses.objects.create(
                 application_id=updated_instance,
                 status_id=new_status,
-                assigned_user_id=self.request.user,
+                assigned_user_id=assigned_user if assigned_user else None,
                 notes=status_notes or f"Status changed from {old_status} to {new_status}"
             )
-        # If status_notes provided without status change, update the latest status history entry
-        elif status_notes and updated_instance.current_status:
+        # If status_notes or assigned_user provided without status change, update the latest status history entry
+        elif (status_notes or assigned_user) and updated_instance.current_status:
             latest_status = ApplicationAssignedUserStatuses.objects.filter(
                 application_id=updated_instance,
                 status_id=updated_instance.current_status
             ).order_by('-created_at').first()
             
             if latest_status:
-                latest_status.notes = status_notes
+                if status_notes:
+                    latest_status.notes = status_notes
+                if assigned_user:
+                    latest_status.assigned_user_id = assigned_user
                 latest_status.save()
     
     def perform_destroy(self, instance):
