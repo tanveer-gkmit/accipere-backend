@@ -13,6 +13,17 @@ class JobViewset(viewsets.ModelViewSet):
     queryset = Jobs.objects.all()
     serializer_class = JobSerializer
     
+    def get_queryset(self):
+        """
+        Filter jobs based on authentication status.
+        - Unauthenticated users: only see Open jobs
+        - Authenticated users: see all jobs
+        """
+        if self.request.user.is_authenticated:
+            return Jobs.objects.all()
+        else:
+            return Jobs.objects.filter(status='Open')
+    
     def get_permissions(self):
         """
         Set permissions based on action.
