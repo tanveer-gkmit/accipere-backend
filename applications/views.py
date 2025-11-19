@@ -120,7 +120,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         """
         if self.action == 'create':
             return [AllowAny()]
-        return [IsRecruiter()]
+        return [IsAuthenticated()]
     
     @transaction.atomic
     def perform_create(self, serializer):
