@@ -61,7 +61,7 @@ jobs:
           echo "MAX_UPLOAD_SIZE=5242880" >> $GITHUB_ENV
       
       - name: Run migrations
-        run: python manage.py migrate --noinput
+        run: python manage.py migrate
       
       - name: Run tests
         run: python manage.py test
