@@ -16,7 +16,7 @@ class LoginTestCase(APITestCase):
         """Set up test data"""
         self.client = APIClient()
         self.login_url = reverse('token_obtain_pair')
-        self.role = Role.objects.get(name='Recruiter')
+        self.role, _ = Role.objects.get_or_create(name='Recruiter', defaults={'description': 'Recruiter role'})
         
         self.active_user = User.objects.create_user(
             email='active@test.com',
@@ -65,7 +65,7 @@ class TokenRefreshTestCase(APITestCase):
         """Set up test data"""
         self.client = APIClient()
         self.refresh_url = reverse('token_refresh')
-        self.role = Role.objects.get(name='Recruiter')
+        self.role, _ = Role.objects.get_or_create(name='Recruiter', defaults={'description': 'Recruiter role'})
         
         self.user = User.objects.create_user(
             email='test@test.com',
@@ -110,7 +110,7 @@ class LogoutTestCase(APITestCase):
         """Set up test data"""
         self.client = APIClient()
         self.logout_url = reverse('token_logout')
-        self.role = Role.objects.get(name='Recruiter')
+        self.role, _ = Role.objects.get_or_create(name='Recruiter', defaults={'description': 'Recruiter role'})
         
         self.user = User.objects.create_user(
             email='test@test.com',
@@ -157,7 +157,7 @@ class CurrentUserTestCase(APITestCase):
         """Set up test data"""
         self.client = APIClient()
         self.me_url = reverse('current_user')
-        self.role = Role.objects.get(name='Recruiter')
+        self.role, _ = Role.objects.get_or_create(name='Recruiter', defaults={'description': 'Recruiter role'})
         
         self.user = User.objects.create_user(
             email='user@test.com',
