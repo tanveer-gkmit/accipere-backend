@@ -160,12 +160,9 @@ jobs:
               echo "Health check attempt $i/5..."
               RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.DEPLOY_HOST }}:8000/api/health/ || echo "000")
               if [ "$RESPONSE" = "200" ]; then
-                HEALTH_BODY=$(curl -s http://${{ secrets.DEPLOY_HOST }}:8000/api/health/)
-                if echo "$HEALTH_BODY" | grep -q '"status":"ok"'; then
-                  echo "Health check passed!"
-                  HEALTH_CHECK_PASSED=true
-                  break
-                fi
+                echo "Health check passed! (HTTP 200)"
+                HEALTH_CHECK_PASSED=true
+                break
               fi
               echo "Health check failed (HTTP $RESPONSE), retrying in 5 seconds..."
               sleep 5

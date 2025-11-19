@@ -6,4 +6,4 @@ from rest_framework import status
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
-    return Response({"status": "ok", "message": "API is healthy"}, status=status.HTTP_200_OK)
+    return Response({"status": "ok", "message": "API is healthy"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
