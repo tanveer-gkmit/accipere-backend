@@ -69,7 +69,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             role=validated_data['role'],
             is_active=False  # Inactive until password is set
         )
-        # Don't set password here - it will be set via the setup link
+        # Explicitly set unusable password - will be set via the setup link
+        user.set_unusable_password()
+        user.save()
         return user
 
 
