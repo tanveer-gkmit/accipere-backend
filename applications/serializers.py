@@ -121,8 +121,17 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
 
 class ApplicationUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating applications"""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
     resume_file = serializers.FileField(write_only=True, required=False, validators=[validate_pdf_file])
     status_notes = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    assigned_user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(deleted_at__isnull=True, is_active=True),
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     
     class Meta:
         model = Applications
@@ -131,13 +140,15 @@ class ApplicationUpdateSerializer(serializers.ModelSerializer):
             'resume_file', 'total_experience', 'relevant_experience',
             'current_ctc', 'expected_ctc', 'notice_period', 'current_job_title',
             'linkedin', 'github', 'street', 'city', 'zip_code', 
-            'current_status', 'status_notes'
+            'current_status', 'status_notes', 'assigned_user_id'
         ]
     
     def update(self, instance, validated_data):
         """Handle optional file update"""
         resume_file = validated_data.pop('resume_file', None)
+        # Don't pop status_notes and assigned_user_id - they're handled in perform_update
         validated_data.pop('status_notes', None)
+        # Keep assigned_user_id in validated_data for perform_update to use
         
         if resume_file:
             validated_data['resume'] = resume_file.read()
