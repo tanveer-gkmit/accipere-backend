@@ -1,0 +1,156 @@
+name: Build and Deploy Docker Image
+
+on:
+  push:
+    branches:
+      - chore/github-action-setup
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE_NAME: accipere-backend
+  REGISTRY: docker.io
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Set up environment variables
+        run: |
+          echo "DEBUG=False" >> $GITHUB_ENV
+          echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+          echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> $GITHUB_ENV
+          echo "DATABASE_NAME=test_db" >> $GITHUB_ENV
+          echo "DATABASE_USER=postgres" >> $GITHUB_ENV
+          echo "DATABASE_PASSWORD=postgres" >> $GITHUB_ENV
+          echo "DATABASE_HOST=localhost" >> $GITHUB_ENV
+          echo "DATABASE_PORT=5432" >> $GITHUB_ENV
+          echo "CORS_ALLOWED_ORIGINS=http://localhost:3000" >> $GITHUB_ENV
+          echo "JWT_ACCESS_TOKEN_LIFETIME=60" >> $GITHUB_ENV
+          echo "JWT_REFRESH_TOKEN_LIFETIME=1440" >> $GITHUB_ENV
+          echo "MAX_UPLOAD_SIZE=5242880" >> $GITHUB_ENV
+      
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+      
+      - name: Run tests
+        run: python manage.py test
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/chore/github-action-setup'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:buildcache,mode=max
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/chore/github-action-setup'
+    
+    steps:
+      - name: Deploy to EC2 instance
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          script: |
+            # Navigate to deployment directory
+            cd /opt/accipere-backend || exit 1
+            
+            # Login to Docker Hub
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            
+            # Pull latest image
+            docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup
+            
+            # Stop and remove old container
+            docker stop accipere-backend || true
+            docker rm accipere-backend || true
+            
+            # Run new container with volume mounts for persistence
+            docker run -d \
+              --name accipere-backend \
+              --restart unless-stopped \
+              -p 8000:8000 \
+              --env-file .env \
+              -v /opt/accipere-backend/staticfiles:/app/staticfiles \
+              -v /opt/accipere-backend/media:/app/media \
+              ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup
+            
+            # Wait for container to be ready
+            sleep 5
+            
+            # Run migrations
+            docker exec accipere-backend python manage.py migrate --noinput
+            
+            # Clean up old images
+            docker image prune -af --filter "until=72h"
+            
+            # Logout from Docker Hub
+            docker logout
