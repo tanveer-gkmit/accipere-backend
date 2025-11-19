@@ -126,18 +126,25 @@ jobs:
             # Login to Docker Hub
             echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
             
-            # Pull latest image
-            docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup
-            
-            # Backup current container image tag for rollback
+            # Capture current image BEFORE any docker operations
             CURRENT_IMAGE=$(docker inspect accipere-backend --format='{{.Config.Image}}' 2>/dev/null || echo "none")
             echo "Current image: $CURRENT_IMAGE"
+            
+            # Tag current image as rollback candidate (if exists)
+            if [ "$CURRENT_IMAGE" != "none" ]; then
+              docker tag "$CURRENT_IMAGE" ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:rollback-candidate
+              echo "Tagged current image as rollback-candidate"
+            fi
+            
+            # Pull latest image
+            NEW_IMAGE="${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup"
+            docker pull "$NEW_IMAGE"
             
             # Stop and remove old container
             docker stop accipere-backend || true
             docker rm accipere-backend || true
             
-            # Run new container with volume mounts for persistence
+            # Run new container
             docker run -d \
               --name accipere-backend \
               --restart unless-stopped \
@@ -145,7 +152,7 @@ jobs:
               --env-file .env \
               -v /opt/accipere-backend/staticfiles:/app/staticfiles \
               -v /opt/accipere-backend/media:/app/media \
-              ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup
+              "$NEW_IMAGE"
             
             # Wait for container to be ready
             sleep 10
@@ -158,7 +165,7 @@ jobs:
             HEALTH_CHECK_PASSED=false
             for i in {1..5}; do
               echo "Health check attempt $i/5..."
-              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.DEPLOY_HOST }}:8000/api/health/ || echo "000")
+              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/health/ || echo "000")
               if [ "$RESPONSE" = "200" ]; then
                 echo "Health check passed! (HTTP 200)"
                 HEALTH_CHECK_PASSED=true
@@ -170,12 +177,13 @@ jobs:
             
             # Rollback if health check failed
             if [ "$HEALTH_CHECK_PASSED" = false ]; then
-              echo "Health check failed after 5 attempts. Rolling back to previous version..."
+              echo "Health check failed. Rolling back to previous version..."
               docker stop accipere-backend || true
               docker rm accipere-backend || true
               
-              if [ "$CURRENT_IMAGE" != "none" ]; then
-                echo "Restoring previous container with image: $CURRENT_IMAGE"
+              ROLLBACK_IMAGE="${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:rollback-candidate"
+              if docker image inspect "$ROLLBACK_IMAGE" > /dev/null 2>&1; then
+                echo "Restoring previous container with image: $ROLLBACK_IMAGE"
                 docker run -d \
                   --name accipere-backend \
                   --restart unless-stopped \
@@ -183,18 +191,22 @@ jobs:
                   --env-file .env \
                   -v /opt/accipere-backend/staticfiles:/app/staticfiles \
                   -v /opt/accipere-backend/media:/app/media \
-                  $CURRENT_IMAGE
+                  "$ROLLBACK_IMAGE"
+                
+                # Wait and verify rollback
+                sleep 10
+                docker exec accipere-backend python manage.py migrate --noinput || true
                 echo "Rollback completed"
               else
-                echo "No previous container to rollback to"
+                echo "No previous image available for rollback"
               fi
               
               docker logout
               exit 1
             fi
             
-            # Clean up old images
+            # Success - clean up rollback candidate and old images
+            docker rmi "${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:rollback-candidate" 2>/dev/null || true
             docker image prune -af --filter "until=72h"
             
-            # Logout from Docker Hub
             docker logout
