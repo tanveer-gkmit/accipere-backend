@@ -63,18 +63,8 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate --noinput
       
-      - name: Run tests with coverage
-        run: |
-          coverage run --source='.' manage.py test
-          coverage report
-          coverage xml
-      
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
+      - name: Run tests
+        run: python manage.py test
 
   build-and-push:
     name: Build and Push Docker Image
@@ -112,8 +102,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     name: Deploy to EC2
@@ -139,6 +129,10 @@ jobs:
             # Pull latest image
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup
             
+            # Backup current container image tag for rollback
+            CURRENT_IMAGE=$(docker inspect accipere-backend --format='{{.Config.Image}}' 2>/dev/null || echo "none")
+            echo "Current image: $CURRENT_IMAGE"
+            
             # Stop and remove old container
             docker stop accipere-backend || true
             docker rm accipere-backend || true
@@ -154,10 +148,53 @@ jobs:
               ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:chore-github-action-setup
             
             # Wait for container to be ready
-            sleep 5
+            sleep 10
             
             # Run migrations
             docker exec accipere-backend python manage.py migrate --noinput
+            
+            # Health check with retry
+            echo "Performing health check..."
+            HEALTH_CHECK_PASSED=false
+            for i in {1..5}; do
+              echo "Health check attempt $i/5..."
+              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.DEPLOY_HOST }}:8000/api/health/ || echo "000")
+              if [ "$RESPONSE" = "200" ]; then
+                HEALTH_BODY=$(curl -s http://${{ secrets.DEPLOY_HOST }}:8000/api/health/)
+                if echo "$HEALTH_BODY" | grep -q '"status":"ok"'; then
+                  echo "Health check passed!"
+                  HEALTH_CHECK_PASSED=true
+                  break
+                fi
+              fi
+              echo "Health check failed (HTTP $RESPONSE), retrying in 5 seconds..."
+              sleep 5
+            done
+            
+            # Rollback if health check failed
+            if [ "$HEALTH_CHECK_PASSED" = false ]; then
+              echo "Health check failed after 5 attempts. Rolling back to previous version..."
+              docker stop accipere-backend || true
+              docker rm accipere-backend || true
+              
+              if [ "$CURRENT_IMAGE" != "none" ]; then
+                echo "Restoring previous container with image: $CURRENT_IMAGE"
+                docker run -d \
+                  --name accipere-backend \
+                  --restart unless-stopped \
+                  -p 8000:8000 \
+                  --env-file .env \
+                  -v /opt/accipere-backend/staticfiles:/app/staticfiles \
+                  -v /opt/accipere-backend/media:/app/media \
+                  $CURRENT_IMAGE
+                echo "Rollback completed"
+              else
+                echo "No previous container to rollback to"
+              fi
+              
+              docker logout
+              exit 1
+            fi
             
             # Clean up old images
             docker image prune -af --filter "until=72h"
