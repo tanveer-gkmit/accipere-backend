@@ -48,7 +48,7 @@ jobs:
       - name: Set up environment variables
         run: |
           echo "DEBUG=False" >> $GITHUB_ENV
-          echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+          echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> $GITHUB_ENV
           echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> $GITHUB_ENV
           echo "DATABASE_NAME=test_db" >> $GITHUB_ENV
           echo "DATABASE_USER=postgres" >> $GITHUB_ENV
