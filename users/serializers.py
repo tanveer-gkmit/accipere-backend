@@ -3,6 +3,7 @@ from django.utils import timezone
 from .models import User
 from roles.models import Role
 from common.permissions import IsRecruiter
+from applications.models import Applications
 
 
 class SimpleUserSerializer(serializers.ModelSerializer):
@@ -142,3 +143,27 @@ class SetPasswordSerializer(serializers.Serializer):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
         return data
+
+
+
+class UserApplicationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for applications assigned to a user.
+    Shows application details with job and status information.
+    """
+    job_title = serializers.CharField(source='job_id.title', read_only=True)
+    current_status_name = serializers.CharField(source='current_status.name', read_only=True)
+    applicant_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Applications
+        fields = [
+            'id', 'applicant_name', 'email', 'phone_no',
+            'job_id', 'job_title', 'current_status', 'current_status_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+    
+    def get_applicant_name(self, obj):
+        """Return full name of the applicant."""
+        return f"{obj.first_name} {obj.last_name}"
