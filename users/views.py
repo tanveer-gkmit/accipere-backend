@@ -25,26 +25,12 @@ PASSWORD_SETUP = 'password_setup'
 PASSWORD_RESET = 'password_reset'
 
 
-class SimpleUserViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for listing users with minimal information.
-    Accessible by all authenticated users.
-    
-    Endpoints:
-    - GET /api/users/simple/     - List all active users (id, email, name)
-    - GET /api/users/simple/{id}/ - Retrieve single user (id, email, name)
-    """
-    queryset = User.objects.filter(deleted_at__isnull=True, is_active=True)
-    serializer_class = SimpleUserSerializer
-    permission_classes = [IsAuthenticated]
-
-
 class UserViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing users (Administrator only).
     
     Endpoints:
-    - GET    /api/users/                      - List all users
+    - GET    /api/users/                      - List all users (use ?simple=true for minimal info)
     - POST   /api/users/                      - Create user
     - GET    /api/users/{id}/                 - Retrieve user
     - PUT    /api/users/{id}/                 - Update user
@@ -52,12 +38,29 @@ class UserViewSet(viewsets.ModelViewSet):
     - DELETE /api/users/{id}/                 - Soft delete user
     - POST   /api/users/{id}/reset-password/  - Reset user password (admin only)
     - POST   /api/users/set-password/         - Set password via setup/reset link (public)
+    
+    Query Parameters:
+    - simple (bool): If true, returns minimal user info (id, email, name, role_name) for active users only
     """
     queryset = User.objects.filter(deleted_at__isnull=True)
     permission_classes = [IsAdmin]
     
+    def get_queryset(self):
+        """Filter queryset based on simple parameter."""
+        queryset = super().get_queryset()
+        
+        # If simple=true, only return active users
+        if self.request.query_params.get('simple', '').lower() == 'true':
+            queryset = queryset.filter(is_active=True)
+        
+        return queryset
+    
     def get_serializer_class(self):
-        """Return appropriate serializer based on action."""
+        """Return appropriate serializer based on action and query params."""
+        # Check for simple query parameter
+        if self.request.query_params.get('simple', '').lower() == 'true':
+            return SimpleUserSerializer
+        
         serializer_map = {
             'create': UserCreateSerializer,
             'update': UserUpdateSerializer,
@@ -67,7 +70,11 @@ class UserViewSet(viewsets.ModelViewSet):
         return serializer_map.get(self.action, UserSerializer)
     
     def get_permissions(self):
-        """Set permissions based on action."""
+        """Set permissions based on action and query params."""
+        # If simple=true, allow all authenticated users to list
+        if self.action == 'list' and self.request.query_params.get('simple', '').lower() == 'true':
+            return [IsAuthenticated()]
+        
         permission_map = {
             'set_password': [AllowAny()],
             'list': [IsAdmin()],

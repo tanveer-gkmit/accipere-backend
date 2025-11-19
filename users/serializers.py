@@ -8,15 +8,16 @@ from common.permissions import IsRecruiter
 class SimpleUserSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for User model.
-    Returns only id, email, and name.
+    Returns only id, email, name, and role name.
     Can be accessed by recruiters.
     """
     name = serializers.CharField(source='get_full_name', read_only=True)
+    role_name = serializers.CharField(source='role.name', read_only=True)
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'name']
-        read_only_fields = ['id', 'email', 'name']
+        fields = ['id', 'email', 'name', 'role_name']
+        read_only_fields = ['id', 'email', 'name', 'role_name']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -67,7 +68,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             role=validated_data['role'],
             is_active=False  # Inactive until password is set
         )
-        # Don't set password here - it will be set via the setup link
+        # Explicitly set unusable password - will be set via the setup link
+        user.set_unusable_password()
+        user.save()
         return user
 
 
