@@ -13,8 +13,8 @@ class UserManagerTestCase(TestCase):
     
     def setUp(self):
         """Set up test data"""
-        self.role = Role.objects.get(name='Recruiter')
-        self.admin_role = Role.objects.get(name='Administrator')
+        self.role, _ = Role.objects.get_or_create(name='Recruiter', defaults={'description': 'Recruiter role'})
+        self.admin_role, _ = Role.objects.get_or_create(name='Administrator', defaults={'description': 'Administrator role'})
     
     def test_create_user(self):
         """Test creating a regular user"""
@@ -121,8 +121,8 @@ class UserApplicationsEndpointTestCase(APITestCase):
     def setUp(self):
         """Set up test data"""
         # Create roles
-        self.admin_role = Role.objects.get(name='Administrator')
-        self.recruiter_role = Role.objects.get(name='Recruiter')
+        self.admin_role, _ = Role.objects.get_or_create(name='Administrator', defaults={'description': 'Administrator role'})
+        self.recruiter_role, _ = Role.objects.get_or_create(name='Recruiter', defaults={'description': 'Recruiter role'})
         
         # Create users
         self.admin_user = User.objects.create_user(
