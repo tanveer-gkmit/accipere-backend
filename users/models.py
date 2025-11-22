@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 import uuid
 
 from roles.models import Role
@@ -21,7 +23,14 @@ class UserManager(BaseUserManager):
         
         email = self.normalize_email(email)
         user = self.model(email=email, first_name=first_name, last_name=last_name, **extra_fields)
-        user.set_password(password)  # This uses Django's PBKDF2 password hashing
+        
+        # Validate password strength before setting it
+        if password:
+            try:
+                validate_password(password, user=user)
+            except ValidationError as e:
+                raise ValueError(f"Password validation failed: {', '.join(e.messages)}")
+            user.set_password(password)  # This uses Django's PBKDF2 password hashing
         user.save(using=self._db)
         return user
 
