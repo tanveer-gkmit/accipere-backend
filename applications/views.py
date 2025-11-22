@@ -126,13 +126,14 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """
         Return different serializers based on action.
+        Use ApplicationUpdateSerializer for write operations (validation),
+        but ApplicationDetailSerializer for read operations (response).
         """
         if self.action == 'list':
             return ApplicationListSerializer
         elif self.action == 'create':
             return ApplicationCreateSerializer
-        elif self.action in ['update', 'partial_update']:
-            return ApplicationUpdateSerializer
+        # For update/partial_update, use detail serializer for consistent response
         return ApplicationDetailSerializer
     
     def get_permissions(self):
@@ -174,6 +175,35 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 assigned_user_id=assigned_user,
                 notes=status_notes or f"Application created"
             )
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Override to use ApplicationUpdateSerializer for validation,
+        then return ApplicationDetailSerializer for consistent response.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Use update serializer for validation
+        update_serializer = ApplicationUpdateSerializer(
+            instance, data=request.data, partial=partial, context=self.get_serializer_context()
+        )
+        update_serializer.is_valid(raise_exception=True)
+        
+        # Perform update with custom logic
+        self.perform_update(update_serializer)
+        
+        # Refresh instance and return with detail serializer
+        instance.refresh_from_db()
+        response_serializer = ApplicationDetailSerializer(instance)
+        return Response(response_serializer.data)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Override to handle PATCH requests with same logic as update.
+        """
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
     
     @transaction.atomic
     def perform_update(self, serializer):

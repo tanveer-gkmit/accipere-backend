@@ -19,6 +19,10 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from rest_framework.exceptions import bad_request, server_error
+
+handler404 = 'rest_framework.exceptions.bad_request'
+handler500 = 'rest_framework.exceptions.server_error'
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),

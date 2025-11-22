@@ -110,6 +110,13 @@ class UserViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
+        # Prevent admin from updating their own account
+        if instance.role.name == 'Administrator' and request.user.id == instance.id:
+            return Response(
+                {"error": "Administrators cannot update their own account"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -124,6 +131,14 @@ class UserViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Soft delete a user by setting deleted_at timestamp."""
         user = self.get_object()
+        
+        # Prevent admin from deleting their own account
+        if user.role.name == 'Administrator' and request.user.id == user.id:
+            return Response(
+                {"error": "Administrators cannot delete their own account"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         user.deleted_at = timezone.now()
         user.is_active = False
         user.save()
@@ -137,6 +152,13 @@ class UserViewSet(viewsets.ModelViewSet):
     def reset_password(self, request, pk=None):
         """Admin-only endpoint to reset a user's password."""
         user = self.get_object()
+        
+        # Prevent admin from resetting their own password
+        if user.role.name == 'Administrator' and request.user.id == user.id:
+            return Response(
+                {"error": "Administrators cannot reset their own password"},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         # Set password to unusable
         user.set_unusable_password()
