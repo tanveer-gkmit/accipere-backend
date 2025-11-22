@@ -110,10 +110,13 @@ class UserViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Prevent admin from updating their own account
-        if instance.role.name == 'Administrator' and request.user.id == instance.id:
+        # Prevent admin from making themselves inactive
+        if (instance.role.name == 'Administrator' and 
+            request.user.id == instance.id and 
+            'is_active' in request.data and 
+            not request.data['is_active']):
             return Response(
-                {"error": "Administrators cannot update their own account"},
+                {"error": "Administrators cannot deactivate their own account"},
                 status=status.HTTP_403_FORBIDDEN
             )
         
