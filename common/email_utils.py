@@ -1,11 +1,4 @@
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from django.conf import settings
-from decouple import config
-
-
-import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -13,8 +6,11 @@ from decouple import config
 
 
 def _send_email(receiver_email, subject, text_content, html_content):
+    """
+    Send email using SendGrid SMTP.
+    """
     sender_email = config('EMAIL_HOST_USER')
-    password = config('EMAIL_HOST_PASSWORD')
+    password = config('EMAIL_HOST_PASSWORD')  # This is your SendGrid API key
     
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -28,14 +24,17 @@ def _send_email(receiver_email, subject, text_content, html_content):
         # Create a secure SSL context
         context = ssl.create_default_context()
         
-        # Connect to SMTP server on port 587
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.ehlo()  # Identify yourself to the SMTP server
-            server.starttls(context=context)  # Upgrade connection to TLS
-            server.ehlo()  # Re-identify after STARTTLS
+        # Connect to SendGrid SMTP server on port 587
+        with smtplib.SMTP("smtp.sendgrid.net", 587, timeout=30) as server:
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
             server.login(sender_email, password)
             server.send_message(msg)
+        
+        print(f"✅ Email sent successfully to {receiver_email}")
         return True
+        
     except Exception as e:
         import traceback
         print(f"❌ Email Error: {e}")
@@ -43,22 +42,9 @@ def _send_email(receiver_email, subject, text_content, html_content):
         return False
 
 
-
 def _create_email_template(title, greeting, message, link, button_text, gradient_colors, info_box):
     """
     Create a styled HTML email template.
-    
-    Args:
-        title: Email title in header
-        greeting: Greeting text (e.g., "Hi John")
-        message: Main message content
-        link: Action link URL
-        button_text: Text for the action button
-        gradient_colors: Tuple of (start_color, end_color) for gradient
-        info_box: Dict with 'bg_color', 'border_color', 'text_color', and 'content'
-    
-    Returns:
-        str: HTML email template
     """
     start_color, end_color = gradient_colors
     
