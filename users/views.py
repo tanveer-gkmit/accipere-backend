@@ -21,7 +21,7 @@ from .serializers import (
 from common.permissions import IsAdmin, IsAdminOrSelf
 from common.email_utils import send_set_password_email, send_reset_password_email
 from applications.models import Applications, ApplicationAssignedUserStatuses
-
+import django
 
 TOKEN_EXPIRY_DAYS = 2
 PASSWORD_SETUP = 'password_setup'
