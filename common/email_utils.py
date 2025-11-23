@@ -33,7 +33,7 @@ def _send_email(receiver_email, subject, text_content, html_content):
     
     # Send email using Gmail SMTP
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 587) as server:
             server.login(sender_email, password)
             server.send_message(msg)
         return True
