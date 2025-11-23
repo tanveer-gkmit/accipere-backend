@@ -200,10 +200,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         # Validate and set password
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        if django.contrib.auth.password_validation.validate_password(serializer.validated_data['password'], user=user):
-            user.set_password(serializer.validated_data['password'])
+        user.set_password(serializer.validated_data['password'])
         user.is_active = True
         user.save()
         
