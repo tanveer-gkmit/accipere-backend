@@ -5,12 +5,22 @@ from email.mime.multipart import MIMEMultipart
 from decouple import config
 
 
+import smtplib
+import ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from decouple import config
+
+
 def _send_email(receiver_email, subject, text_content, html_content):
     """
     Send email using SendGrid SMTP.
     """
+    # The FROM address (must be verified in SendGrid)
     sender_email = config('EMAIL_HOST_USER')
-    password = config('EMAIL_HOST_PASSWORD')  # This is your SendGrid API key
+    
+    # SendGrid API key
+    sendgrid_api_key = config('EMAIL_HOST_PASSWORD')
     
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -21,15 +31,16 @@ def _send_email(receiver_email, subject, text_content, html_content):
     msg.attach(MIMEText(html_content, "html"))
     
     try:
-        # Create a secure SSL context
         context = ssl.create_default_context()
         
-        # Connect to SendGrid SMTP server on port 587
         with smtplib.SMTP("smtp.sendgrid.net", 587, timeout=30) as server:
             server.ehlo()
             server.starttls(context=context)
             server.ehlo()
-            server.login(sender_email, password)
+            
+            # CRITICAL FIX: Use "apikey" as username, not the email address
+            server.login("apikey", sendgrid_api_key)
+            
             server.send_message(msg)
         
         print(f"✅ Email sent successfully to {receiver_email}")
@@ -40,6 +51,7 @@ def _send_email(receiver_email, subject, text_content, html_content):
         print(f"❌ Email Error: {e}")
         print(traceback.format_exc())
         return False
+
 
 
 def _create_email_template(title, greeting, message, link, button_text, gradient_colors, info_box):
