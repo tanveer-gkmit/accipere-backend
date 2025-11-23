@@ -200,6 +200,8 @@ class UserViewSet(viewsets.ModelViewSet):
         
         # Validate and set password
         serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
         user.set_password(serializer.validated_data['password'])
         user.is_active = True
         user.save()
