@@ -5,41 +5,43 @@ from django.conf import settings
 from decouple import config
 
 
+import smtplib
+import ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from decouple import config
+
+
 def _send_email(receiver_email, subject, text_content, html_content):
-    """
-    Generic email sending function.
-    
-    Args:
-        receiver_email: Email address of the recipient
-        subject: Email subject line
-        text_content: Plain text version of email
-        html_content: HTML version of email
-    
-    Returns:
-        bool: True if email sent successfully, False otherwise
-    """
     sender_email = config('EMAIL_HOST_USER')
     password = config('EMAIL_HOST_PASSWORD')
     
-    # Create the email
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = sender_email
     msg["To"] = receiver_email
     
-    # Attach both plain text and HTML
     msg.attach(MIMEText(text_content, "plain"))
     msg.attach(MIMEText(html_content, "html"))
     
-    # Send email using Gmail SMTP
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 587) as server:
+        # Create a secure SSL context
+        context = ssl.create_default_context()
+        
+        # Connect to SMTP server on port 587
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.ehlo()  # Identify yourself to the SMTP server
+            server.starttls(context=context)  # Upgrade connection to TLS
+            server.ehlo()  # Re-identify after STARTTLS
             server.login(sender_email, password)
             server.send_message(msg)
         return True
     except Exception as e:
+        import traceback
         print(f"❌ Email Error: {e}")
+        print(traceback.format_exc())
         return False
+
 
 
 def _create_email_template(title, greeting, message, link, button_text, gradient_colors, info_box):
